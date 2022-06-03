@@ -1,0 +1,16 @@
+{
+  "name": "publisher-connector-simple-test",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "This is a simple test for https://github.com/chili-publish/publisher-connector",
+  "main": "PublisherConnector.min.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [],
+  "author": "seancrowe",
+  "license": "MIT",
+  "dependencies": {
+    "localhost": "^0.4.1"
+  }
+}

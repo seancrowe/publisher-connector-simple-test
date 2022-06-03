@@ -1,0 +1,207 @@
+<html>
+  <head>
+
+  </head>
+  <body>
+    <div id="selection-div">
+      <p>Please paste in your editor URL with an active API key and document ID</p>
+      <input id="editor-url" style="width: 80%" type="text" />
+      <p>Please paste in the URL to publish-connector</p>
+      <input id="script-url" style="width: 80%" type="text" />
+      <button>Launch Test</button>
+    </div>
+    <div id="test" style="display:none">
+    </div>
+    <!-- <script src="PublisherConnector.min.js"></script> -->
+    <script type="module">
+   
+      document.getElementsByTagName("button")[0].addEventListener("click", async ()=>{
+
+        document.getElementById("selection-div").style.display = "none";
+        const testResultsDiv = document.getElementById("test");
+        testResultsDiv.style.display = "block";
+        const ul = document.createElement("ul");
+        testResultsDiv.appendChild(ul);
+
+        try {
+        
+          const editorUrl = document.getElementById("editor-url").value;
+          const scriptUrl = document.getElementById("script-url").value;
+
+          const {PublisherConnector} = await import(scriptUrl);
+
+          const iframe = document.createElement("iframe");
+          document.body.appendChild(iframe);
+          iframe.style.width = "80vw";
+          iframe.style.height = "80vh";
+          iframe.src = editorUrl;
+
+          (async () => {
+            const publisherConnector = await PublisherConnector.build(iframe);
+
+            if (publisherConnector == null) {
+              createLI("publishConnector null", ul, true);
+              return;
+            }
+
+            const name = "test_" + new Date().getTime();
+
+            const addListnerPromise = testAddListener(publisherConnector);
+
+            const setAndGetResult = await testSetAndGet(publisherConnector, name);
+
+            if (setAndGetResult) {
+              createLI("setProperty and getObject was successful", ul);
+            }
+            else {
+              createLI("setProperty and getObject failed", ul, true);
+            }
+
+            const executeFunctionResult = await testExecuteFunction(publisherConnector, name);
+
+            if (executeFunctionResult) {
+              createLI("executeFunction was successful", ul);
+            }
+            else {
+              createLI("executeFunction failed", ul, true);
+            }
+
+
+            const lockVarResult = await testLockVariable(publisherConnector, name);
+
+            if (lockVarResult) {
+              createLI("setVariableIsLocked was successful", ul);
+            }
+            else {
+              createLI("setVariableIsLocked failed", ul, true);
+            }
+
+
+            const getSnapshotResult = await testGetSnapshot(publisherConnector);
+
+            
+            if (getSnapshotResult) {
+              createLI("getPageSnapshot was successful", ul);
+            }
+            else {
+              createLI("getPageSnapshot failed", ul, true);
+            }
+
+            const addListenerResult = await addListnerPromise;
+
+            if (addListenerResult) {
+              createLI("addListener for DocumentFullyRendered was successful", ul);
+            }
+            else {
+              createLI("addListener for DocumentFullyRendered failed", ul, true);
+            }
+
+            if (addListenerResult && getSnapshotResult && lockVarResult && executeFunctionResult && setAndGetResult) {
+              alert("all test passed");
+            }
+            else {
+              alert("One or more tests failed");
+            }
+            
+          })();
+
+        }
+        catch(e) {
+          console.log(e);
+          createLI(e.toString(), ul, true);
+        }
+
+
+      });
+
+      async function testAddListener(publisherConnector) {
+
+        return new Promise(resolve => {
+          publisherConnector.addListener("DocumentFullyRendered", () => {
+                resolve(true);
+              });  
+        });
+
+        setTimeout(() => {
+          resolve(false);
+
+        }, 15000);
+      }
+
+      async function testGetSnapshot(publisherConnector) {
+
+        return new Promise(resolve => {
+
+          (async () =>{
+            const snapshot = await publisherConnector.getPageSnapshot(0, "100%", null, null, "preview", false);
+            const document = await publisherConnector.getObject("document");
+            const realWidth = parseInt(document.pixelWidth)
+
+            window.snapshot = snapshot;
+
+            const img = new Image(); 
+            img.onload = () => {
+              const diff = Math.abs(img.width - realWidth);
+              if (diff < 5) {
+                resolve(true);
+                return;
+              }
+
+              resolve(false);
+            }
+            img.src = "data:image/png;base64, " + snapshot;
+        })();
+      });
+    }
+
+      async function testLockVariable(publisherConnector, name) {
+    
+        await publisherConnector.setVariableIsLocked(name, true)
+        const updateNewVariable = await publisherConnector.getObject("document.variables["+name+"]");
+
+        if (updateNewVariable.IsLocked == "true") {
+          return true;
+        }
+
+        return false;
+  }
+
+      async function testExecuteFunction(publisherConnector, name) {
+        const newVariable = await publisherConnector.executeFunction("document.variables", "Add");
+        await publisherConnector.setProperty("document.variables["+newVariable.id+"]", "name", name);
+
+        if (newVariable.minimum == 0) {
+          return true;
+        }
+
+        return false
+      }
+
+      async function testSetAndGet(publisherConnector, name) {
+        await publisherConnector.setProperty("document", "name", name);
+        const documentName = await publisherConnector.getObject("document.name");
+
+        if (documentName == name) {
+          return true;
+        }
+
+        return false;
+      }
+
+      function createLI(text, parent, error = false) {
+        const li = document.createElement("li");
+        if (error) {
+          li.style.color = "red";
+          li.innerText = "ERROR: " + text;
+        }
+        else {
+          li.style.color = "green";
+          li.innerText = text;
+        }
+        parent.appendChild(li);
+      }
+
+
+    </script>
+  </body>
+</html>
