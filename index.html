@@ -35,6 +35,7 @@
           iframe.style.width = "80vw";
           iframe.style.height = "80vh";
           iframe.src = editorUrl;
+		
 
           (async () => {
             const publisherConnector = await PublisherConnector.build(iframe);
@@ -44,9 +45,11 @@
               return;
             }
 
+            window.publisherConnector = publisherConnector;
+
             const name = "test_" + new Date().getTime();
 
-            const addListnerPromise = testAddListener(publisherConnector);
+            const addListnerPromise = await testAddListener(publisherConnector);
 
             const setAndGetResult = await testSetAndGet(publisherConnector, name);
 
